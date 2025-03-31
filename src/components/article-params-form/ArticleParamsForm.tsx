@@ -3,10 +3,15 @@ import { Button } from 'src/ui/button';
 import { useEffect, useRef, useState } from 'react';
 import styles from './ArticleParamsForm.module.scss';
 import { Select } from 'src/ui/select';
-import { OptionType } from 'src/constants/articleProps';
+import {
+	ArticleStateType,
+	defaultArticleState,
+	OptionType,
+} from 'src/constants/articleProps';
 import { RadioGroup } from 'src/ui/radio-group/RadioGroup';
 import { Separator } from 'src/ui/separator';
 import { Text } from 'src/ui/text';
+import clsx from 'clsx';
 
 type ArticleSelectOptions = {
 	fontFamilies: OptionType[];
@@ -16,34 +21,21 @@ type ArticleSelectOptions = {
 	contentWidths: OptionType[];
 };
 
-type ArticleSelectedOptions = {
-	fontFamily: OptionType;
-	fontSize: OptionType;
-	color: OptionType;
-	backgroundColor: OptionType;
-	contentWidth: OptionType;
-};
-
 type ArticleParamsProps = {
 	options: ArticleSelectOptions;
-	selected: ArticleSelectedOptions;
-	changeSetting: (value: OptionType, key: string) => void;
-	resetSetting?: () => void;
-	applySettings?: () => void;
+	applySetting: (state: ArticleStateType) => void;
+	resetSetting: () => void;
 };
 
 export const ArticleParamsForm = (props: ArticleParamsProps) => {
-	const [isOpen, setIsOpen] = useState(false);
+	const [isMenuOpened, setIsMenuOpened] = useState(false);
+
+	const [formSettings, setFormSettings] = useState(defaultArticleState);
 
 	const settingsAside = useRef<HTMLElement | null>(null);
 
 	function toggleOpen() {
-		setIsOpen(!isOpen);
-		if (!isOpen) {
-			settingsAside.current?.classList.add(styles.container_open);
-		} else {
-			settingsAside.current?.classList.remove(styles.container_open);
-		}
+		setIsMenuOpened(!isMenuOpened);
 	}
 
 	function handleClickOutside(event: MouseEvent) {
@@ -55,21 +47,45 @@ export const ArticleParamsForm = (props: ArticleParamsProps) => {
 		}
 	}
 
+	function handleSelectSetting(selected: OptionType, key: string) {
+		setFormSettings((previousState) => ({
+			...previousState,
+			[key]: selected,
+		}));
+	}
+
+	function handleReset() {
+		props.resetSetting()
+		setFormSettings(defaultArticleState);
+
+	}
+
+	function handleApply() {
+		props.applySetting(formSettings);
+	}
+
 	useEffect(() => {
+		if (!isMenuOpened) return;
 		document.addEventListener('mousedown', handleClickOutside);
 		return () => {
 			document.removeEventListener('mousedown', handleClickOutside);
 		};
-	}, [isOpen]);
+	}, [isMenuOpened]);
 
 	return (
 		<>
-			<ArrowButton isOpen={isOpen} onClick={toggleOpen} />
-			<aside className={styles.container} ref={settingsAside}>
+			<ArrowButton isOpen={isMenuOpened} onClick={toggleOpen} />
+			<aside
+				className={clsx(
+					styles.container,
+					isMenuOpened ? styles.container_open : ''
+				)}
+				ref={settingsAside}>
 				<form
 					className={styles.form}
 					onSubmit={(e) => {
 						e.preventDefault();
+						handleApply();
 					}}>
 					<Text
 						children={'задайте параметры'}
@@ -78,51 +94,46 @@ export const ArticleParamsForm = (props: ArticleParamsProps) => {
 						weight={800}></Text>
 					<Select
 						title='шрифт'
-						selected={props.selected.fontFamily}
+						selected={formSettings.fontFamilyOption}
 						options={props.options.fontFamilies}
 						onChange={(value) =>
-							props.changeSetting(value, 'fontFamilyOption')
+							handleSelectSetting(value, 'fontFamilyOption')
 						}></Select>
 					<RadioGroup
-						selected={props.selected.fontSize}
+						selected={formSettings.fontSizeOption}
 						options={props.options.fontSizes}
-						onChange={(value) => props.changeSetting(value, 'fontSizeOption')}
+						onChange={(value) => handleSelectSetting(value, 'fontSizeOption')}
 						name='radio-box'
 						title='размер шрифта'></RadioGroup>
 					<Select
 						title='цвет шрифта'
-						selected={props.selected.color}
+						selected={formSettings.fontColor}
 						options={props.options.fontColors}
 						onChange={(value) =>
-							props.changeSetting(value, 'fontColor')
+							handleSelectSetting(value, 'fontColor')
 						}></Select>
 					<Separator></Separator>
 					<Select
 						title='цвет фона'
-						selected={props.selected.backgroundColor}
+						selected={formSettings.backgroundColor}
 						options={props.options.backgroundColors}
 						onChange={(value) =>
-							props.changeSetting(value, 'backgroundColor')
+							handleSelectSetting(value, 'backgroundColor')
 						}></Select>
 					<Select
-						selected={props.selected.contentWidth}
+						selected={formSettings.contentWidth}
 						options={props.options.contentWidths}
 						onChange={(value) =>
-							props.changeSetting(value, 'contentWidth')
+							handleSelectSetting(value, 'contentWidth')
 						}></Select>
 					<div className={styles.bottomContainer}>
 						<Button
 							title='Сбросить'
 							htmlType='reset'
 							type='clear'
-							onClick={props.resetSetting}
+							onClick={handleReset}
 						/>
-						<Button
-							title='Применить'
-							htmlType='submit'
-							type='apply'
-							onClick={props.applySettings}
-						/>
+						<Button title='Применить' htmlType='submit' type='apply' />
 					</div>
 				</form>
 			</aside>
